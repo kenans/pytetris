@@ -1,2 +1,2 @@
-# Pyteris
-This is a Teris game implemented by python
+# Pytetris
+This is a Tetris game implemented by python
