@@ -22,6 +22,18 @@ class BlockLoader(object):
             with open(f_path, 'r') as f:
                 self.pics[f_name] = [line.strip('\r\n') for line in f.readlines()]
         return self.pics
+    def load2(self):
+        path = os.path.join('..', 'resource')
+        f_list = os.listdir(path)
+        for f_name in f_list:
+            f_path = os.path.join(path, f_name)
+            with open(f_path, 'r') as f:
+                key = f_name.split('_')[0]
+                if not self.pics.has_key(key):
+                    self.pics[key] = []
+                item = [line.strip('\r\n') for line in f.readlines()]
+                self.pics[key].append(item)
+        return self.pics
 
 class Block(object):
     def __init__(self):
@@ -65,9 +77,11 @@ class GameMap(object):
 class GamePaint(object):
     def __init__(self, handler = drawhandler.ConsolePaintHandler()):
         self.handler = handler
-        self.pics = BlockLoader().load()
+        #self.pics = BlockLoader().load()
+        self.pics = BlockLoader().load2()
     def draw_block(self, b):
-        pic = self.pics[str(b.block_id) + '_' + str(b.face_direction)]
+        #pic = self.pics[str(b.block_id) + '_' + str(b.face_direction)]
+        pic = self.pics[str(b.block_id)][0]
         self.handler.draw_pic(pic, b.x, b.y)    
     def draw_map(self, m):
         # p11        p12
