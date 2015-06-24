@@ -40,14 +40,14 @@ class ConsolePaintHandler(object):
                 self.buf[i][j] = ' '
     def draw_line(self, p1, p2):
         if p1[0] == p2[0]:
-            # Horizontal
+            # Vertical
             x = p1[0]
             y_min = min(p1[1], p2[1])
             y_max = max(p1[1], p2[1])
             for yi in range(y_min, y_max+1):
                 self.draw_point([x, yi])
         elif p1[1] == p2[1]:
-            # Vertical
+            # Horizontal
             y = p1[1]
             x_min = min(p1[0], p2[0])
             x_max = max(p1[0], p2[0])
@@ -56,6 +56,8 @@ class ConsolePaintHandler(object):
         else:
             # Otherwise
             pass
+    def draw_space(self, p):
+        self.buf[p[1]][p[0]] = ' '
     def draw_point(self, p):
         self.buf[p[1]][p[0]] = '*'
     def draw_pic(self, pic, x, y):
