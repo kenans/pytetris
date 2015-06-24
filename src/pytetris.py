@@ -28,7 +28,7 @@ class BlockLoader(object):
         for f_name in f_list:
             f_path = os.path.join(path, f_name)
             with open(f_path, 'r') as f:
-                key = f_name.split('_')[0]
+                key = int(f_name.split('_')[0]) - 1
                 if not self.pics.has_key(key):
                     self.pics[key] = []
                 item = [line.strip('\r\n') for line in f.readlines()]
@@ -36,32 +36,34 @@ class BlockLoader(object):
         return self.pics
 
 class Block(object):
-    def __init__(self):
-        self.block_id = 1
-        self.face_direction = 1 # 1, 2, 3, 4
-        self.speed = 1
+    def __init__(self, pic_list = [], pic_id = 0, speed = 1):
+        self.pic_list = pic_list
+        self.pic_id = pic_id
+        self.speed = speed
         self.x = 0
         self.y = 0
     def reinit(self, x = 0, y = 0):
         pass
     def drop(self):
         self.y -= self.speed
-    def move(self, direction):
+    def move(self, direction = DOWN):
         if direction is DOWN:
             self.y -= self.speed
         elif direction is LEFT:
             self.x -= self.speed
+            self.x -= self.speed
         elif direction is RIGHT:
+            self.x += self.speed
             self.x += self.speed
     def rotate(self, clockwise = True):
         if clockwise:
-            self.face_direction += 1
+            self.pic_id += 1
         else:
-            self.face_direction -= 1
-        if self.face_direction == 5:
-            self.face_direction = 1
-        elif self.face_direction == 0:
-            self.face_direction = 4
+            self.pic_id -= 1
+        if self.pic_id == len(self.pic_list):
+            self.pic_id = 0
+        elif self.pic_id == -1:
+            self.pic_id = len(self.pic_list) - 1;
 
 class GameMap(object):
     def __init__(self):
@@ -77,11 +79,8 @@ class GameMap(object):
 class GamePaint(object):
     def __init__(self, handler = drawhandler.ConsolePaintHandler()):
         self.handler = handler
-        #self.pics = BlockLoader().load()
-        self.pics = BlockLoader().load2()
     def draw_block(self, b):
-        #pic = self.pics[str(b.block_id) + '_' + str(b.face_direction)]
-        pic = self.pics[str(b.block_id)][0]
+        pic = b.pic_list[b.pic_id]
         self.handler.draw_pic(pic, b.x, b.y)    
     def draw_map(self, m):
         # p11        p12
@@ -110,6 +109,7 @@ class Game(object):
 class GameTeris(Game):
     def __init__(self):
         self.current_block = Block()
+        self.pics = BlockLoader().load2()
     def main_thread(self):
         while self.start:
             # Should drop ?
@@ -153,23 +153,30 @@ class GameTeris(Game):
         pass
 
 def main():
+    pics = BlockLoader().load2()
     handler = drawhandler.ConsolePaintHandler()
     game_paint = GamePaint(handler)
     m = GameMap()
-    b = Block()
-    b.block_id = 1
-    b.face_direction = 1
-    b.x = 10
-    b.y = 15
-    #threading.Thread(target = GameTeris().key_thread, args = (b)).start()
-    for i in range(6):
-        game_paint.repaint()
-        game_paint.draw_map(m)
-        game_paint.draw_block(b)
-        game_paint.paint()
-        b.rotate()
-        b.drop()
-        time.sleep(1)
+    #b = Block(pic_list = pics[1])
+    #b.x = 1
+    #b.y = 1
+    #game_paint.repaint()
+    #game_paint.draw_map(m)
+    #game_paint.draw_block(b)
+    #game_paint.paint()
+    for i in range(len(pics)):
+        b = Block(pic_list = pics[i])
+        b.x = 10
+        b.y = 15
+        #threading.Thread(target = GameTeris().key_thread, args = (b)).start()
+        for i in range(6):
+            game_paint.repaint()
+            game_paint.draw_map(m)
+            game_paint.draw_block(b)
+            game_paint.paint()
+            b.rotate()
+            #b.drop()
+            time.sleep(1)
 
 if __name__ == '__main__':
     main()
