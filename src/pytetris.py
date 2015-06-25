@@ -1,47 +1,73 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import time
+import math
 import os
 import drawhandler
 import getkey
 import threading
+
 
 UP = 0
 DOWN = 1
 LEFT = 2
 RIGHT = 3
 
-class BlockLoader(object):
-    def __init__(self):
-        self.pics = {}
-    def load(self):
-        path = os.path.join('..', 'resource')
-        f_list = os.listdir(path)
-        for f_name in f_list:
-            f_path = os.path.join(path, f_name)
-            with open(f_path, 'r') as f:
-                self.pics[f_name] = [line.strip('\r\n') for line in f.readlines()]
-        return self.pics
-    def load2(self):
-        path = os.path.join('..', 'resource')
-        f_list = os.listdir(path)
-        for f_name in f_list:
-            f_path = os.path.join(path, f_name)
-            with open(f_path, 'r') as f:
-                key = int(f_name.split('_')[0]) - 1
-                if not self.pics.has_key(key):
-                    self.pics[key] = []
-                item = [line.strip('\r\n') for line in f.readlines()]
-                self.pics[key].append(item)
-        return self.pics
+class BlockTool(object):
+    PICS = {
+            0: [[0, 0], [0, 1], [0, 2], [1, 0]],
+            1: [[0, 0], [0, 1], [0, 2], [-1, 0]],
+            2: [[0, 0], [0, 1], [1, 0], [-1, 0]],
+            3: [[0, 0], [0, 1], [0, 2], [0, -1]],
+            4: [[0, 0], [-1, 0], [0, 1], [1, 1]],
+            5: [[0, 0], [1, 0], [0, 1], [-1, 1]],
+            6: [[0, 0], [0, 1], [1, 0], [1, 1]]
+            }
+    STATE_COUNT = {
+            0: 4,
+            1: 4,
+            2: 4, 
+            3: 2,
+            4: 2, 
+            5: 2,
+            6: 1
+            }
+    @classmethod
+    def load_pic(cls, block_id):
+        return sorted(cls.PICS[block_id], key = lambda(x):x[1])
+    @classmethod
+    def state_count(cls, block_id):
+        return cls.STATE_COUNT[block_id]
+    @staticmethod
+    def rotate_pic(pic, ang = 90, clockwise = True):
+        new_pic = []
+        for point in pic:
+            x = point[0]
+            y = point[1]
+            new_pic.append([y, -x])
+        return sorted(new_pic, key = lambda(x):x[1])
+    @staticmethod
+    def get_bottom_edge(pic):
+        return [item for item in pic if [item[0], item[1] - 1] not in pic]
+    @staticmethod
+    def get_up_edge(pic):
+        return [item for item in pic if [item[0], item[1] + 1] not in pic]
+    @staticmethod
+    def get_left_edge(pic):
+        return [item for item in pic if [item[0] - 1, item[1]] not in pic]
+    @staticmethod
+    def get_right_edge(pic):
+        return [item for item in pic if [item[0] + 1, item[1]] not in pic]
+        
 
 class Block(object):
-    def __init__(self, pic_list = [], pic_id = 0, speed = 1):
-        self.pic_list = pic_list
-        self.pic_id = pic_id
+    def __init__(self, block_id = 0, x = 0, y = 0, speed = 1):
+        self.block_id = block_id
+        self.pic = BlockTool.load_pic(block_id)
+        self.state = 0
+        self.x = x
+        self.y = y
         self.speed = speed
-        self.x = 0
-        self.y = 0
     def reinit(self, x = 0, y = 0):
         pass
     def drop(self):
@@ -51,19 +77,19 @@ class Block(object):
             self.y -= self.speed
         elif direction is LEFT:
             self.x -= self.speed
-            self.x -= self.speed
         elif direction is RIGHT:
             self.x += self.speed
-            self.x += self.speed
-    def rotate(self, clockwise = True):
-        if clockwise:
-            self.pic_id += 1
+    def rotate(self):
+        #BlockTool.rotate_pic(self.pic, ang, clockwise)
+        self.state += 1
+        if self.state is BlockTool.state_count(self.block_id):
+            self.pic = BlockTool.load_pic(self.block_id)
+            self.state = 0
         else:
-            self.pic_id -= 1
-        if self.pic_id == len(self.pic_list):
-            self.pic_id = 0
-        elif self.pic_id == -1:
-            self.pic_id = len(self.pic_list) - 1;
+            self.pic = BlockTool.rotate_pic(self.pic)
+
+
+
 
 class GameMap(object):
     def __init__(self):
@@ -80,8 +106,7 @@ class GamePaint(object):
     def __init__(self, handler = drawhandler.ConsolePaintHandler()):
         self.handler = handler
     def draw_block(self, b):
-        pic = b.pic_list[b.pic_id]
-        self.handler.draw_pic(pic, b.x, b.y)    
+        self.handler.draw_points(b.pic, b.x, b.y)
     def draw_map(self, m):
         # p11        p12
         #
@@ -109,7 +134,6 @@ class Game(object):
 class GameTeris(Game):
     def __init__(self):
         self.current_block = Block()
-        self.pics = BlockLoader().load2()
     def main_thread(self):
         while self.start:
             # Should drop ?
@@ -153,30 +177,44 @@ class GameTeris(Game):
         pass
 
 def main():
-    pics = BlockLoader().load2()
     handler = drawhandler.ConsolePaintHandler()
     game_paint = GamePaint(handler)
     m = GameMap()
-    #b = Block(pic_list = pics[1])
-    #b.x = 1
+    #b = Block(block_id = 0)
+    #b.x = 10
     #b.y = 1
     #game_paint.repaint()
     #game_paint.draw_map(m)
     #game_paint.draw_block(b)
     #game_paint.paint()
-    for i in range(len(pics)):
-        b = Block(pic_list = pics[i])
+    for i in range(len(BlockTool.PICS)):
+        b = Block(i)
         b.x = 10
         b.y = 15
         #threading.Thread(target = GameTeris().key_thread, args = (b)).start()
-        for i in range(6):
+        while True:
+            # game_paint.repaint()
+            # game_paint.draw_map(m)
+            # game_paint.draw_block(b)
+            # game_paint.paint()
+            # time.sleep(0.5)
+            # b.rotate()
             game_paint.repaint()
             game_paint.draw_map(m)
             game_paint.draw_block(b)
             game_paint.paint()
-            b.rotate()
-            #b.drop()
-            time.sleep(1)
+            time.sleep(0.5)
+            if not at_bottom(b):
+                b.drop()
+            else:
+                break
+
+def at_bottom(block):
+    for point in BlockTool.get_bottom_edge(block.pic):
+        if block.y + point[1] is 1:
+            return True
+    return False
+            
 
 if __name__ == '__main__':
     main()
