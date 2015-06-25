@@ -88,9 +88,6 @@ class Block(object):
         else:
             self.pic = BlockTool.rotate_pic(self.pic)
 
-
-
-
 class GameMap(object):
     def __init__(self):
         self.x_min = 0
@@ -131,6 +128,7 @@ class Game(object):
         pass
     def game_pause(self):
         pass
+    
 class GameTeris(Game):
     def __init__(self):
         self.current_block = Block()
