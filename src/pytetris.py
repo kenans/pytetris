@@ -107,7 +107,7 @@ class GameMap(object):
     def __attach_points(self, pic, x, y):
         for point in pic:
             self.point_buf.append([point[0] + x, point[1] + y])
-            self.buf[point[0]][point[1]] = 1
+            self.buf[point[0]][point[1]] = 2
         self.point_buf.sort(key = lambda(point): point[1])
 
 class GamePaint(object):
@@ -197,33 +197,33 @@ def main():
     b = Block(block_id = 0)
     b.x = 1
     b.y = 0
-    game_paint.repaint()
-    game_paint.draw_map(m)
-    game_paint.draw_block(b)
-    game_paint.paint()
-    # for i in range(len(BlockTool.PICS)):
-    #     b = Block(i)
-    #     b.x = 10
-    #     b.y = 20
-    #     #threading.Thread(target = GameTeris().key_thread, args = (b)).start()
-    #     while True:
-    #         # game_paint.repaint()
-    #         # game_paint.draw_map(m)
-    #         # game_paint.draw_block(b)
-    #         # game_paint.paint()
-    #         # time.sleep(0.5)
-    #         # b.rotate()
-    #         game_paint.repaint()
-    #         game_paint.draw_map(m)
-    #         game_paint.draw_block(b)
-    #         game_paint.paint()
-    #         print m.point_buf
-    #         time.sleep(0.5)
-    #         if not at_bottom(b, m):
-    #             b.drop()
-    #         else:
-    #             m.attach_block(b)
-    #             break
+    # game_paint.repaint()
+    # game_paint.draw_map(m)
+    # game_paint.draw_block(b)
+    # game_paint.paint()
+    for i in range(len(BlockTool.PICS)):
+        b = Block(i)
+        b.x = 10
+        b.y = 20
+        #threading.Thread(target = GameTeris().key_thread, args = (b)).start()
+        while True:
+            # game_paint.repaint()
+            # game_paint.draw_map(m)
+            # game_paint.draw_block(b)
+            # game_paint.paint()
+            # time.sleep(0.5)
+            # b.rotate()
+            game_paint.repaint()
+            game_paint.draw_map(m)
+            game_paint.draw_block(b)
+            game_paint.paint()
+            print m.point_buf
+            time.sleep(0.5)
+            if at_bottom(b, m):
+                m.attach_block(b)
+                break
+            else:
+                b.drop()
 
 def at_bottom(block, m):
     # for point in BlockTool.get_bottom_edge(block.pic):
@@ -231,9 +231,13 @@ def at_bottom(block, m):
     #        block.y + point[1] - 1 is 0:
     #         return True
     # return False
+    # for point in block.pic:
+    #     if [block.x, block.y + point[1] - 1] in m.point_buf or \
+    #        block.y + point[1] - 1 is 0:
+    #         return True
+    # return False
     for point in block.pic:
-        if [block.x, block.y + point[1] - 1] in m.point_buf or \
-           block.y + point[1] - 1 is 0:
+        if m.buf[block.x + point[0]][block.y + point[1] - 1] is not 0:
             return True
     return False
 
