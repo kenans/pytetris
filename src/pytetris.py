@@ -48,18 +48,17 @@ class BlockTool(object):
         return sorted(new_pic, key = lambda(x):x[1])
     @staticmethod
     def get_bottom_edge(pic):
-        return [item for item in pic if [item[0], item[1] - 1] not in pic]
+        return (item for item in pic if [item[0], item[1] - 1] not in pic)
     @staticmethod
     def get_up_edge(pic):
-        return [item for item in pic if [item[0], item[1] + 1] not in pic]
+        return (item for item in pic if [item[0], item[1] + 1] not in pic)
     @staticmethod
     def get_left_edge(pic):
-        return [item for item in pic if [item[0] - 1, item[1]] not in pic]
+        return (item for item in pic if [item[0] - 1, item[1]] not in pic)
     @staticmethod
     def get_right_edge(pic):
-        return [item for item in pic if [item[0] + 1, item[1]] not in pic]
+        return (item for item in pic if [item[0] + 1, item[1]] not in pic)
         
-
 class Block(object):
     def __init__(self, block_id = 0, x = 0, y = 0, speed = 1):
         self.block_id = block_id
@@ -94,14 +93,25 @@ class GameMap(object):
         self.x_max = 25
         self.y_min = 0
         self.y_max = 30
+        self.block_buf = []
+        self.point_buf = []
     def full_line(self):
         pass
     def clear_full_lines(self):
         pass
+    def attach_block(self, b):
+        self.__attach_points(b.pic, b.x, b.y)
+    def __attach_points(self, pic, x, y):
+        for point in pic:
+            self.point_buf.append([point[0] + x, point[1] + y])
+        self.point_buf.sort(key = lambda(point): point[1])
 
 class GamePaint(object):
     def __init__(self, handler = drawhandler.ConsolePaintHandler()):
         self.handler = handler
+    def draw_blocks(self, blocks):
+        for block in blocks:
+            self.draw_block(block)
     def draw_block(self, b):
         self.handler.draw_points(b.pic, b.x, b.y)
     def draw_map(self, m):
@@ -116,6 +126,8 @@ class GamePaint(object):
         self.handler.draw_line(p12, p21)
         self.handler.draw_line(p21, p22)
         self.handler.draw_line(p11, p22)
+        # point_buf
+        self.handler.draw_points(m.point_buf, 0, 0)
     def repaint(self):
         self.handler.clear_buf()
     def paint(self):
@@ -202,17 +214,18 @@ def main():
             game_paint.draw_block(b)
             game_paint.paint()
             time.sleep(0.5)
-            if not at_bottom(b):
+            if not at_bottom(b, m):
                 b.drop()
             else:
+                m.attach_block(b)
                 break
 
-def at_bottom(block):
+def at_bottom(block, m):
     for point in BlockTool.get_bottom_edge(block.pic):
-        if block.y + point[1] is 1:
+        if [block.x, block.y + point[1] - 1] in BlockTool.get_up_edge(m.point_buf) or \
+           block.y + point[1] - 1 is 0:
             return True
     return False
-            
 
 if __name__ == '__main__':
     main()
