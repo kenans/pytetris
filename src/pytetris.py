@@ -93,8 +93,11 @@ class GameMap(object):
         self.x_max = 25
         self.y_min = 0
         self.y_max = 30
-        self.block_buf = []
         self.point_buf = []
+        self.point_dic = {}
+        self.buf = [[1] + [0] * (self.y_max - self.y_min + 1 - 2) + [1]] * (self.x_max - self.x_min + 1 - 2)
+        self.buf.insert(0, [1] * (self.y_max - self.y_min + 1))
+        self.buf.append([1] * (self.y_max - self.y_min + 1))
     def full_line(self):
         pass
     def clear_full_lines(self):
@@ -104,6 +107,7 @@ class GameMap(object):
     def __attach_points(self, pic, x, y):
         for point in pic:
             self.point_buf.append([point[0] + x, point[1] + y])
+            self.buf[point[0]][point[1]] = 1
         self.point_buf.sort(key = lambda(point): point[1])
 
 class GamePaint(object):
@@ -190,39 +194,45 @@ def main():
     handler = drawhandler.ConsolePaintHandler()
     game_paint = GamePaint(handler)
     m = GameMap()
-    #b = Block(block_id = 0)
-    #b.x = 10
-    #b.y = 1
-    #game_paint.repaint()
-    #game_paint.draw_map(m)
-    #game_paint.draw_block(b)
-    #game_paint.paint()
-    for i in range(len(BlockTool.PICS)):
-        b = Block(i)
-        b.x = 10
-        b.y = 15
-        #threading.Thread(target = GameTeris().key_thread, args = (b)).start()
-        while True:
-            # game_paint.repaint()
-            # game_paint.draw_map(m)
-            # game_paint.draw_block(b)
-            # game_paint.paint()
-            # time.sleep(0.5)
-            # b.rotate()
-            game_paint.repaint()
-            game_paint.draw_map(m)
-            game_paint.draw_block(b)
-            game_paint.paint()
-            time.sleep(0.5)
-            if not at_bottom(b, m):
-                b.drop()
-            else:
-                m.attach_block(b)
-                break
+    b = Block(block_id = 0)
+    b.x = 1
+    b.y = 0
+    game_paint.repaint()
+    game_paint.draw_map(m)
+    game_paint.draw_block(b)
+    game_paint.paint()
+    # for i in range(len(BlockTool.PICS)):
+    #     b = Block(i)
+    #     b.x = 10
+    #     b.y = 20
+    #     #threading.Thread(target = GameTeris().key_thread, args = (b)).start()
+    #     while True:
+    #         # game_paint.repaint()
+    #         # game_paint.draw_map(m)
+    #         # game_paint.draw_block(b)
+    #         # game_paint.paint()
+    #         # time.sleep(0.5)
+    #         # b.rotate()
+    #         game_paint.repaint()
+    #         game_paint.draw_map(m)
+    #         game_paint.draw_block(b)
+    #         game_paint.paint()
+    #         print m.point_buf
+    #         time.sleep(0.5)
+    #         if not at_bottom(b, m):
+    #             b.drop()
+    #         else:
+    #             m.attach_block(b)
+    #             break
 
 def at_bottom(block, m):
-    for point in BlockTool.get_bottom_edge(block.pic):
-        if [block.x, block.y + point[1] - 1] in BlockTool.get_up_edge(m.point_buf) or \
+    # for point in BlockTool.get_bottom_edge(block.pic):
+    #     if [block.x, block.y + point[1] - 1] in BlockTool.get_up_edge(m.point_buf) or \
+    #        block.y + point[1] - 1 is 0:
+    #         return True
+    # return False
+    for point in block.pic:
+        if [block.x, block.y + point[1] - 1] in m.point_buf or \
            block.y + point[1] - 1 is 0:
             return True
     return False
