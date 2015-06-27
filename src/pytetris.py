@@ -63,6 +63,10 @@ class Block(object):
     def __init__(self, block_id = 0, x = 0, y = 0, speed = 1):
         self.block_id = block_id
         self.pic = BlockTool.load_pic(block_id)
+        self.pic_bottom = BlockTool.get_bottom_edge(self.pic)
+        self.pic_up = BlockTool.get_up_edge(self.pic)
+        self.pic_left = BlockTool.get_left_edge(self.pic)
+        self.pic_right = BlockTool.get_right_edge(self.pic)
         self.state = 0
         self.x = x
         self.y = y
@@ -79,7 +83,6 @@ class Block(object):
         elif direction is RIGHT:
             self.x += self.speed
     def rotate(self):
-        #BlockTool.rotate_pic(self.pic, ang, clockwise)
         self.state += 1
         if self.state is BlockTool.state_count(self.block_id):
             self.pic = BlockTool.load_pic(self.block_id)
@@ -90,14 +93,14 @@ class Block(object):
 class GameMap(object):
     def __init__(self):
         self.x_min = 0
-        self.x_max = 25
+        self.x_max = 10
         self.y_min = 0
         self.y_max = 30
         self.point_buf = []
-        self.point_dic = {}
-        self.buf = [[1] + [0] * (self.y_max - self.y_min + 1 - 2) + [1]] * (self.x_max - self.x_min + 1 - 2)
+        self.buf = [[1] + [0] * (self.y_max - self.y_min + 1 - 2) + [1] for i in range(self.x_max - self.x_min + 1 - 2)]
         self.buf.insert(0, [1] * (self.y_max - self.y_min + 1))
         self.buf.append([1] * (self.y_max - self.y_min + 1))
+        self.buf = tuple(self.buf)
     def full_line(self):
         pass
     def clear_full_lines(self):
@@ -106,9 +109,9 @@ class GameMap(object):
         self.__attach_points(b.pic, b.x, b.y)
     def __attach_points(self, pic, x, y):
         for point in pic:
-            self.point_buf.append([point[0] + x, point[1] + y])
-            self.buf[point[0]][point[1]] = 2
-        self.point_buf.sort(key = lambda(point): point[1])
+            self.buf[point[0] + x][point[1] + y] = 2
+            # self.point_buf.append([point[0] + x, point[1] + y])
+        #self.point_buf.sort(key = lambda(point): point[1])
 
 class GamePaint(object):
     def __init__(self, handler = drawhandler.ConsolePaintHandler()):
@@ -119,19 +122,23 @@ class GamePaint(object):
     def draw_block(self, b):
         self.handler.draw_points(b.pic, b.x, b.y)
     def draw_map(self, m):
-        # p11        p12
-        #
-        # p22        p21
-        p11 = [m.x_min, m.y_max]
-        p12 = [m.x_max, m.y_max]
-        p21 = [m.x_max, m.y_min]
-        p22 = [m.x_min, m.y_min]
-        self.handler.draw_line(p11, p12)
-        self.handler.draw_line(p12, p21)
-        self.handler.draw_line(p21, p22)
-        self.handler.draw_line(p11, p22)
-        # point_buf
-        self.handler.draw_points(m.point_buf, 0, 0)
+        for i in range(len(m.buf)):
+            for j in range(len(m.buf[i])):
+                if m.buf[i][j] is not 0:
+                    self.handler.draw_point([i, j])
+        # # p11        p12
+        # #
+        # # p22        p21
+        # p11 = [m.x_min, m.y_max]
+        # p12 = [m.x_max, m.y_max]
+        # p21 = [m.x_max, m.y_min]
+        # p22 = [m.x_min, m.y_min]
+        # self.handler.draw_line(p11, p12)
+        # self.handler.draw_line(p12, p21)
+        # self.handler.draw_line(p21, p22)
+        # self.handler.draw_line(p11, p22)
+        # # point_buf
+        # self.handler.draw_points(m.point_buf, 0, 0)
     def repaint(self):
         self.handler.clear_buf()
     def paint(self):
@@ -190,22 +197,41 @@ class GameTeris(Game):
         # Should return True periodically, like every 1s
         pass
 
+def key_thread(block):
+    getch = getkey.Getch()
+    while True:#self.start == True:
+        key = None
+        c = getch()
+        #print 'pressed:', c
+        if c == 'w':
+            block.rotate()
+        elif c == 'd':
+            block.move(RIGHT)
+        elif c == 'a':
+            block.move(LEFT)
+        elif c == 's':
+            block.move(DOWN)
+        elif c == 'q':
+            break
+        time.sleep(0.1)
+
+def get_current_block():
+    
+    pass
+
 def main():
     handler = drawhandler.ConsolePaintHandler()
     game_paint = GamePaint(handler)
     m = GameMap()
-    b = Block(block_id = 0)
-    b.x = 1
-    b.y = 0
     # game_paint.repaint()
     # game_paint.draw_map(m)
     # game_paint.draw_block(b)
     # game_paint.paint()
     for i in range(len(BlockTool.PICS)):
         b = Block(i)
-        b.x = 10
+        b.x = 5
         b.y = 20
-        #threading.Thread(target = GameTeris().key_thread, args = (b)).start()
+        threading.Thread(target = key_thread, args = (b,)).start()
         while True:
             # game_paint.repaint()
             # game_paint.draw_map(m)
@@ -213,33 +239,43 @@ def main():
             # game_paint.paint()
             # time.sleep(0.5)
             # b.rotate()
+            # -----------------------
             game_paint.repaint()
             game_paint.draw_map(m)
             game_paint.draw_block(b)
             game_paint.paint()
-            print m.point_buf
-            time.sleep(0.5)
-            if at_bottom(b, m):
-                m.attach_block(b)
-                break
-            else:
-                b.drop()
+            # print m.point_buf
+            time.sleep(0.05)
+            # if at_bottom(b, m):
+            #     m.attach_block(b)
+            #     # for line in m.buf:
+            #     #     print line
+            #     # raw_input()
+            #     break
+            # else:
+            #     b.drop()
 
 def at_bottom(block, m):
-    # for point in BlockTool.get_bottom_edge(block.pic):
-    #     if [block.x, block.y + point[1] - 1] in BlockTool.get_up_edge(m.point_buf) or \
-    #        block.y + point[1] - 1 is 0:
-    #         return True
-    # return False
-    # for point in block.pic:
-    #     if [block.x, block.y + point[1] - 1] in m.point_buf or \
-    #        block.y + point[1] - 1 is 0:
-    #         return True
-    # return False
     for point in block.pic:
         if m.buf[block.x + point[0]][block.y + point[1] - 1] is not 0:
             return True
     return False
+def at_left(block, m):
+    for point in block.pic:
+        if m.buf[block.x + point[0] - 1][block.y + point[1]] is not 0:
+            return True
+    return False
+def at_right(block, m):
+    for point in block.pic:
+        if m.buf[block.x + point[0] + 1][block.y + point[1]] is not 0:
+            return True
+    return False
+def can_rotate(block, m):
+    rotated_pic = BlockTool.rotate_pic(block.pic)
+    for point in block.rotated_pic:
+        if m.buf[block.x + point[0]][block.y + point[1]] is not 0:
+            return False
+    return True
 
 if __name__ == '__main__':
     main()
