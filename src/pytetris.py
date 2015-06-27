@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import sys
 import time
-import math
-import os
-import drawhandler
-import getkey
+import random
 import threading
+
+import getkey
+import drawhandler
 
 UP = 0
 DOWN = 1
@@ -92,11 +93,11 @@ class GameMap(object):
     NOTHING = 0
     WALLS   = 1
     BLOCKS  = 2
-    def __init__(self):
-        self.x_min = 0
-        self.x_max = 10
-        self.y_min = 0
-        self.y_max = 30
+    def __init__(self, x_max = 10, y_max = 30, x_min = 0, y_min = 0):
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_max
         self.__row_count = self.y_max - self.y_min + 1
         self.__col_count = self.x_max - self.x_min + 1
         self.__buf = []
@@ -147,14 +148,17 @@ class GameMap(object):
         for line_num in range(1, self.__row_count):    # Scan bottom-up
             zero_count = self.__buf[line_num][1: -1].count(0)
             if zero_count is self.__col_count - 2:  # empty line, padding, return 0
-                while count is not line_num:
-                    self.clear_line(count)
-                    count += 1
-                return 0
-            elif zero_count is not 0:    # neither empty nor full, count it, goes down
+                print 'zero_found, line_num', line_num, ' count', count
+                for i in range(count, line_num):
+                    self.clear_line(i)
+                return line_num - count
+            elif zero_count is not 0 and line_num is not self.__row_count - 2:
+                # neither empty nor full(not last line), count it, goes down
                 self.__buf[count] = self.__buf[line_num][:]
                 count += 1
-        return 0
+            elif zero_count is not 0 and line_num is self.__row_count - 2:
+                return -1
+        return line_num - count
     # -- Private Methods
     def __attach_points(self, pic, x, y):
         for point in pic:
@@ -187,6 +191,9 @@ class GamePaint(object):
             for y in range(y_max): 
                 if m.buf(x, y) is not 0:
                     self.handler.draw_point([x, y])
+    def print_score(self, score):
+        mes = 'score: ' + str(score)
+        print mes
     def repaint(self):
         self.handler.clear_buf()
     def paint(self):
@@ -235,12 +242,15 @@ class GameTeris(Game):
         pass
 
 end = False
+score = 0
 def key_thread(block, m):
     getch = getkey.Getch()
     global end
     while not end:#self.start == True:
         key = None
         c = getch()
+        if end:
+            break
         #print 'pressed:', c
         if c == 'w' and can_rotate(block, m):
             block.rotate()
@@ -250,36 +260,49 @@ def key_thread(block, m):
             block.move(LEFT)
         elif c == 's' and not at_bottom(block, m):
             block.move(DOWN)
-        time.sleep(0.1)
+        time.sleep(0.05)
 
 def display_thread(b, m):
-    game_paint = GamePaint(drawhandler.ConsolePaintHandler())
-    global end
+    game_paint = GamePaint(drawhandler.ConsolePaintHandler(m.x_max, m.x_min, m.y_max, m.y_min))
+    global end, score
     while not end:
         game_paint.repaint()
         game_paint.draw_map(m)
         game_paint.draw_block(b)
         game_paint.paint()
+        game_paint.print_score(score)
         time.sleep(0.05)
+    game_paint.repaint()
+    print '\nGame Over'
+    print 'press Enter to exit...'
+    
 
 def main():
-    m = GameMap()
+    m = GameMap(12, 23)
     b = Block()
     threading.Thread(target = key_thread, args = (b, m, )).start()
     threading.Thread(target = display_thread, args = (b, m, )).start()
-    for i in range(len(BlockTool.PICS)):
+    over = False
+    while not over:
+        i = random.randint(0, len(BlockTool.PICS) - 1)
         b.reinit(block_id = i, x = 5, y = 20)
+        if at_bottom(b, m):
+            over = True
         while True:
             time.sleep(0.5)
             if at_bottom(b, m):
                 m.attach_block(b)
-                m.refresh_lines()
+                count = m.refresh_lines()
+                if count is -1:
+                    over = True
+                elif count is not 0:
+                    global score
+                    score += 2 * count - 1
                 break
             else:
                 b.drop()
     global end
     end = True
-
 
 def at_bottom(block, m):
     for point in block.pic:
@@ -304,4 +327,10 @@ def can_rotate(block, m):
     return True
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except e:
+        print '\ngame crashed, see log.txt'
+        global end
+        end = True
+

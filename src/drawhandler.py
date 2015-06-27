@@ -68,6 +68,10 @@ class ConsolePaintHandler(object):
             k = len(pic) - i - 1
             for j in range(len(pic[k])):
                 self.buf[y+i][x+j] = pic[k][j]
+    def print_mes(self, mes, x, y):
+        for letter in mes:
+            self.buf[y][x] = letter
+            x += 1
     def paint(self):
         import platform
         import os
