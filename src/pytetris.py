@@ -148,7 +148,6 @@ class GameMap(object):
         for line_num in range(1, self.__row_count):    # Scan bottom-up
             zero_count = self.__buf[line_num][1: -1].count(0)
             if zero_count is self.__col_count - 2:  # empty line, padding, return 0
-                print 'zero_found, line_num', line_num, ' count', count
                 for i in range(count, line_num):
                     self.clear_line(i)
                 return line_num - count
@@ -260,7 +259,7 @@ def key_thread(block, m):
             block.move(LEFT)
         elif c == 's' and not at_bottom(block, m):
             block.move(DOWN)
-        time.sleep(0.05)
+        time.sleep(0.1)
 
 def display_thread(b, m):
     game_paint = GamePaint(drawhandler.ConsolePaintHandler(m.x_max, m.x_min, m.y_max, m.y_min))
@@ -274,18 +273,36 @@ def display_thread(b, m):
         time.sleep(0.05)
     game_paint.repaint()
     print '\nGame Over'
+    print 'final score:', score
+    print 'highest score:', get_score()
+    if get_score() < score:
+        log_score(score)
     print 'press Enter to exit...'
-    
+
+def get_score():
+    try:
+        with open("log", "rU") as f:
+            lines = f.readlines()
+            if lines != []:
+                return int(lines[0])
+            else:
+                return 0
+    except:
+        return 0
+def log_score(score):
+    with open("log", "w") as f:
+        f.write(str(score))
 
 def main():
-    m = GameMap(12, 23)
+    global score
+    m = GameMap(12, 20)
     b = Block()
     threading.Thread(target = key_thread, args = (b, m, )).start()
     threading.Thread(target = display_thread, args = (b, m, )).start()
     over = False
     while not over:
         i = random.randint(0, len(BlockTool.PICS) - 1)
-        b.reinit(block_id = i, x = 5, y = 20)
+        b.reinit(block_id = i, x = 5, y = 17)
         if at_bottom(b, m):
             over = True
         while True:
@@ -296,7 +313,6 @@ def main():
                 if count is -1:
                     over = True
                 elif count is not 0:
-                    global score
                     score += 2 * count - 1
                 break
             else:
