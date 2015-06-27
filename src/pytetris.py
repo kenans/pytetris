@@ -7,12 +7,10 @@ import drawhandler
 import getkey
 import threading
 
-
 UP = 0
 DOWN = 1
 LEFT = 2
 RIGHT = 3
-
 class BlockTool(object):
     PICS = {
             0: [[0, 0], [0, 1], [0, 2], [1, 0]],
@@ -101,11 +99,22 @@ class GameMap(object):
         self.y_max = 30
         self.__row_count = self.y_max - self.y_min + 1
         self.__col_count = self.x_max - self.x_min + 1
-        #self.point_buf = []
         self.__buf = []
         self.__init_buf()
+    # -- Buf APIs 
+    def attach_block(self, b):
+        self.__attach_points(b.pic, b.x, b.y)
+    def buf(self, x, y):
+        return self.__buf[y][x]
+    def buf_size(self):
+        return self.__col_count, self.__row_count  # x_max, y_max
+    # -- Old APIs
     def is_full_line(self, line_num):
-        if self.__buf[line_num][1: -1].count(2) == self.__col_count - 2:
+        if self.__buf[line_num][1: -1].count(2) is self.__col_count - 2:
+            return True
+        return False
+    def is_empty_line(self, line_num):
+        if self.__buf[line_num][1: -1].count(0) is self.__col_count - 2:
             return True
         return False
     def full_lines(self):
@@ -124,22 +133,29 @@ class GameMap(object):
     def clear_full_lines(self):
         for line_num in self.full_lines():
             self.clear_line(line_num)
+    # -- New APIs
+    def get_full_lines(self):
+        for line_num in range(1, self.__row_count):
+            zero_count = self.__buf[line_num][1: -1].count(0)
+            if zero_count is self.__col_count - 2:  # empty line, stop yielding
+                raise StopIteration
+            elif zero_count is 0:                   # full line, yield it
+                yield line_num
     def refresh_lines(self):
-        
-        pass
-    def attach_block(self, b):
-        self.__attach_points(b.pic, b.x, b.y)
-    def print_buf(self):
-        for line in self.__buf:
-            print line
-    def buf_at_col(self, col):
-        return [line[col] for line in self.__buf]
-    def buf_at_row(self, row):
-        return self.__buf[row]
-    def buf(self, x, y):
-        return self.__buf[y][x]
-    def buf_size(self):
-        return self.__col_count, self.__row_count  # x_max, y_max
+        # Refresh all lines, returns -1 if game over, 0 otherwise
+        count = 1
+        for line_num in range(1, self.__row_count):    # Scan bottom-up
+            zero_count = self.__buf[line_num][1: -1].count(0)
+            if zero_count is self.__col_count - 2:  # empty line, padding, return 0
+                while count is not line_num:
+                    self.clear_line(count)
+                    count += 1
+                return 0
+            elif zero_count is not 0:    # neither empty nor full, count it, goes down
+                self.__buf[count] = self.__buf[line_num][:]
+                count += 1
+        return 0
+    # -- Private Methods
     def __attach_points(self, pic, x, y):
         for point in pic:
             self.__buf[point[1] + y][point[0] + x] = 2  # buf[y][x]
@@ -148,6 +164,14 @@ class GameMap(object):
         self.__buf.insert(0, [1] * (self.__col_count))
         self.__buf.append([1] * (self.__col_count))
         self.test_buf = self.__buf
+    # -- Debug Methods
+    def print_buf(self):
+        for line in self.__buf:
+            print line
+    def buf_at_col(self, col):
+        return [line[col] for line in self.__buf]
+    def buf_at_row(self, row):
+        return self.__buf[row]
 
 class GamePaint(object):
     def __init__(self, handler = drawhandler.ConsolePaintHandler()):
@@ -210,9 +234,11 @@ class GameTeris(Game):
         # Should return True periodically, like every 1s
         pass
 
+end = False
 def key_thread(block, m):
     getch = getkey.Getch()
-    while True:#self.start == True:
+    global end
+    while not end:#self.start == True:
         key = None
         c = getch()
         #print 'pressed:', c
@@ -222,7 +248,7 @@ def key_thread(block, m):
             block.move(RIGHT)
         elif c == 'a' and not at_left(block, m):
             block.move(LEFT)
-        elif c == 's' and not at_right(block, m):
+        elif c == 's' and not at_bottom(block, m):
             block.move(DOWN)
         elif c == 'q':
             break
@@ -230,7 +256,8 @@ def key_thread(block, m):
 
 def display_thread(b, m):
     game_paint = GamePaint(drawhandler.ConsolePaintHandler())
-    while True:
+    global end
+    while not end:
         game_paint.repaint()
         game_paint.draw_map(m)
         game_paint.draw_block(b)
@@ -248,11 +275,12 @@ def main():
             time.sleep(0.5)
             if at_bottom(b, m):
                 m.attach_block(b)
-                m.clear_full_lines()
                 m.refresh_lines()
                 break
             else:
                 b.drop()
+    global end
+    end = True
 
 
 def at_bottom(block, m):
@@ -272,10 +300,11 @@ def at_right(block, m):
     return False
 def can_rotate(block, m):
     rotated_pic = BlockTool.rotate_pic(block.pic)
-    for point in block.rotated_pic:
+    for point in rotated_pic:
         if m.buf(block.x + point[0], block.y + point[1]) is not 0:
             return False
     return True
 
 if __name__ == '__main__':
     main()
+    exit(0)
