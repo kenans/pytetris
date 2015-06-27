@@ -250,8 +250,6 @@ def key_thread(block, m):
             block.move(LEFT)
         elif c == 's' and not at_bottom(block, m):
             block.move(DOWN)
-        elif c == 'q':
-            break
         time.sleep(0.1)
 
 def display_thread(b, m):
@@ -262,7 +260,7 @@ def display_thread(b, m):
         game_paint.draw_map(m)
         game_paint.draw_block(b)
         game_paint.paint()
-        time.sleep(0.1)
+        time.sleep(0.05)
 
 def main():
     m = GameMap()
@@ -307,4 +305,3 @@ def can_rotate(block, m):
 
 if __name__ == '__main__':
     main()
-    exit(0)
