@@ -208,77 +208,99 @@ class Game(object):
         self.__start = False
     def game_pause(self):
         self.__pause = True
+    def started(self):
+        return self.__start
 
 class GameTeris(Game):
     def __init__(self):
         self.current_block = Block()
+        self.m = GameMap(12, 20)
+        self.b = Block()
+        threading.Thread(target = self.key_thread).start()
+        threading.Thread(target = self.display_thread).start()
     def main_thread(self):
-        while self.start:
-            # Should drop ?
-            if self.__block_drop(self.current_block):
-                self.current_block.drop()
-            # Move & Rotate
-            key = GetKey()
-            self.current_block.move(key)
-            self.current_block.rotate(key)
-            # Current block dead ?
-            if self.__block_dead(self.current_block):
-                # Game over ?
-                if self.__game_over(self):
-                    pass
-                # At least full line ?
-                if self.game_map.full_line():
-                    self.game_map.clear_full_lines()
-                self.current_block.init()
-            # Delay
-            time.sleep(1.0)
-    def __game_over(self):
-        pass
-    def __block_dead(self, block):
-        pass
-    def __block_drop(self, block):
-        # Should return True periodically, like every 1s
-        pass
+        global score
+        over = False
+        while not over:
+            i = random.randint(0, len(BlockTool.PICS) - 1)
+            self.b.reinit(block_id = i, x = 5, y = 17)
+            if self.at_bottom():
+                over = True
+            while True:
+                time.sleep(0.5)
+                if self.at_bottom():
+                    self.m.attach_block(self.b)
+                    count = self.m.refresh_lines()
+                    if count is -1:
+                        over = True
+                    elif count is not 0:
+                        score += 2 * count - 1
+                    break
+                else:
+                    self.b.drop()
+        global end
+        end = True
+    def key_thread(self):
+        getch = getkey.Getch()
+        global end
+        while not end:#self.start == True:
+            key = None
+            c = getch()
+            if end:
+                break
+            #print 'pressed:', c
+            if c == 'w' and self.can_rotate():
+                self.b.rotate()
+            elif c == 'd' and not self.at_right():
+                self.b.move(RIGHT)
+            elif c == 'a' and not self.at_left():
+                self.b.move(LEFT)
+            elif c == 's' and not self.at_bottom():
+                self.b.move(DOWN)
+            time.sleep(0.1)
+    def display_thread(self):
+        game_paint = GamePaint(
+                drawhandler.ConsolePaintHandler(
+                    self.m.x_max, self.m.x_min, self.m.y_max, self.m.y_min))
+        global end, score
+        while not end:
+            game_paint.repaint()
+            game_paint.draw_map(self.m)
+            game_paint.draw_block(self.b)
+            game_paint.paint()
+            game_paint.print_score(score)
+            time.sleep(0.05)
+        game_paint.repaint()
+        print '\nGame Over'
+        print 'final score:', score
+        print 'highest score:', get_score()
+        if get_score() < score:
+            log_score(score)
+        print 'press Enter to exit...'
+    def at_bottom(self):
+        for point in self.b.pic:
+            if self.m.buf(self.b.x + point[0], self.b.y + point[1] - 1) is not 0:
+                return True
+        return False
+    def at_left(self):
+        for point in self.b.pic:
+            if self.m.buf(self.b.x + point[0] - 1, self.b.y + point[1]) is not 0:
+                return True
+        return False
+    def at_right(self):
+        for point in self.b.pic:
+            if self.m.buf(self.b.x + point[0] + 1, self.b.y + point[1]) is not 0:
+                return True
+        return False
+    def can_rotate(self):
+        rotated_pic = BlockTool.rotate_pic(self.b.pic)
+        for point in rotated_pic:
+            if self.m.buf(self.b.x + point[0], self.b.y + point[1]) is not 0:
+                return False
+        return True
 
 end = False
 score = 0
-def key_thread(block, m):
-    getch = getkey.Getch()
-    global end
-    while not end:#self.start == True:
-        key = None
-        c = getch()
-        if end:
-            break
-        #print 'pressed:', c
-        if c == 'w' and can_rotate(block, m):
-            block.rotate()
-        elif c == 'd' and not at_right(block, m):
-            block.move(RIGHT)
-        elif c == 'a' and not at_left(block, m):
-            block.move(LEFT)
-        elif c == 's' and not at_bottom(block, m):
-            block.move(DOWN)
-        time.sleep(0.1)
-
-def display_thread(b, m):
-    game_paint = GamePaint(drawhandler.ConsolePaintHandler(m.x_max, m.x_min, m.y_max, m.y_min))
-    global end, score
-    while not end:
-        game_paint.repaint()
-        game_paint.draw_map(m)
-        game_paint.draw_block(b)
-        game_paint.paint()
-        game_paint.print_score(score)
-        time.sleep(0.05)
-    game_paint.repaint()
-    print '\nGame Over'
-    print 'final score:', score
-    print 'highest score:', get_score()
-    if get_score() < score:
-        log_score(score)
-    print 'press Enter to exit...'
-
 def get_score():
     try:
         with open("log", "rU") as f:
@@ -293,60 +315,6 @@ def log_score(score):
     with open("log", "w") as f:
         f.write(str(score))
 
-def main():
-    global score
-    m = GameMap(12, 20)
-    b = Block()
-    threading.Thread(target = key_thread, args = (b, m, )).start()
-    threading.Thread(target = display_thread, args = (b, m, )).start()
-    over = False
-    while not over:
-        i = random.randint(0, len(BlockTool.PICS) - 1)
-        b.reinit(block_id = i, x = 5, y = 17)
-        if at_bottom(b, m):
-            over = True
-        while True:
-            time.sleep(0.5)
-            if at_bottom(b, m):
-                m.attach_block(b)
-                count = m.refresh_lines()
-                if count is -1:
-                    over = True
-                elif count is not 0:
-                    score += 2 * count - 1
-                break
-            else:
-                b.drop()
-    global end
-    end = True
-
-def at_bottom(block, m):
-    for point in block.pic:
-        if m.buf(block.x + point[0], block.y + point[1] - 1) is not 0:
-            return True
-    return False
-def at_left(block, m):
-    for point in block.pic:
-        if m.buf(block.x + point[0] - 1, block.y + point[1]) is not 0:
-            return True
-    return False
-def at_right(block, m):
-    for point in block.pic:
-        if m.buf(block.x + point[0] + 1, block.y + point[1]) is not 0:
-            return True
-    return False
-def can_rotate(block, m):
-    rotated_pic = BlockTool.rotate_pic(block.pic)
-    for point in rotated_pic:
-        if m.buf(block.x + point[0], block.y + point[1]) is not 0:
-            return False
-    return True
-
 if __name__ == '__main__':
-    try:
-        main()
-    except e:
-        print '\ngame crashed, see log.txt'
-        global end
-        end = True
-
+    game = GameTeris()
+    game.main_thread()
