@@ -11,28 +11,24 @@ import drawhandler
 from game_modules import *
 from game_views import *
 
-class Game(object):
+class GameTetris():
     def __init__(self):
         self.__start = False
         self.__pause = False
     def game_start(self):
         self.__start = True
+        self.score = 0
+        self.m = GameMap(12, 20)
+        self.b = Block()
+        threading.Thread(target = self.key_thread).start()
+        threading.Thread(target = self.display_thread).start()
     def game_end(self):
         self.__start = False
     def game_pause(self):
         self.__pause = True
     def started(self):
         return self.__start
-
-class GameTeris(Game):
-    def __init__(self):
-        self.current_block = Block()
-        self.m = GameMap(12, 20)
-        self.b = Block()
-        threading.Thread(target = self.key_thread).start()
-        threading.Thread(target = self.display_thread).start()
     def main_thread(self):
-        global score
         over = False
         while not over:
             i = random.randint(0, len(BlockTool.PICS) - 1)
@@ -47,19 +43,17 @@ class GameTeris(Game):
                     if count is -1:
                         over = True
                     elif count is not 0:
-                        score += 2 * count - 1
+                        self.score += 2 * count - 1
                     break
                 else:
                     self.b.drop()
-        global end
-        end = True
+        self.game_end()
     def key_thread(self):
         getch = getkey.Getch()
-        global end
-        while not end:#self.start == True:
+        while self.started():
             key = None
             c = getch()
-            if end:
+            if not self.started():
                 break
             #print 'pressed:', c
             if c == 'w' and self.can_rotate():
@@ -75,20 +69,19 @@ class GameTeris(Game):
         game_paint = GamePaint(
                 drawhandler.ConsolePaintHandler(
                     self.m.x_max, self.m.x_min, self.m.y_max, self.m.y_min))
-        global end, score
-        while not end:
+        while self.started():
             game_paint.repaint()
             game_paint.draw_map(self.m)
             game_paint.draw_block(self.b)
             game_paint.paint()
-            game_paint.print_score(score)
+            game_paint.print_score(self.score)
             time.sleep(0.05)
         game_paint.repaint()
         print '\nGame Over'
-        print 'final score:', score
-        print 'highest score:', get_score()
-        if get_score() < score:
-            log_score(score)
+        print 'final score:', self.score
+        print 'highest score:', self.get_score()
+        if self.get_score() < self.score:
+            self.log_score(self.score)
         print 'press Enter to exit...'
     def at_bottom(self):
         for point in self.b.pic:
@@ -111,23 +104,21 @@ class GameTeris(Game):
             if self.m.buf(self.b.x + point[0], self.b.y + point[1]) is not 0:
                 return False
         return True
-
-end = False
-score = 0
-def get_score():
-    try:
-        with open("log", "rU") as f:
-            lines = f.readlines()
-            if lines != []:
-                return int(lines[0])
-            else:
-                return 0
-    except:
-        return 0
-def log_score(score):
-    with open("log", "w") as f:
-        f.write(str(score))
+    def get_score(self):
+        try:
+            with open("log", "rU") as f:
+                lines = f.readlines()
+                if lines != []:
+                    return int(lines[0])
+                else:
+                    return 0
+        except:
+            return 0
+    def log_score(self):
+        with open("log", "w") as f:
+            f.write(str(score))
 
 if __name__ == '__main__':
-    game = GameTeris()
+    game = GameTetris()
+    game.game_start()
     game.main_thread()
