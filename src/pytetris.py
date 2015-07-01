@@ -81,7 +81,7 @@ class GameTetris():
         print 'final score:', self.score
         print 'highest score:', self.get_score()
         if self.get_score() < self.score:
-            self.log_score(self.score)
+            self.log_score()
         print 'press Enter to exit...'
     def at_bottom(self):
         for point in self.b.pic:
@@ -116,7 +116,7 @@ class GameTetris():
             return 0
     def log_score(self):
         with open("log", "w") as f:
-            f.write(str(score))
+            f.write(str(self.score))
 
 if __name__ == '__main__':
     game = GameTetris()
